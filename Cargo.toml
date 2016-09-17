@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["David Allen <david.allen@ey.com>"]
 
 [dependencies]
+iron = "0.4"
 rustc-serialize = "0.3"
 log = "0.3"

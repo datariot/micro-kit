@@ -1,9 +1,14 @@
 extern crate rustc_serialize;
+extern crate iron;
 
 use std::ops::BitAnd;
 use std::collections::HashMap;
 
+use iron::prelude::*;
+use iron::status;
+
 use rustc_serialize::{Encodable, Encoder};
+use rustc_serialize::json;
 
 #[derive(Debug, Clone)]
 pub enum HealthCheckStatus {
@@ -17,6 +22,15 @@ impl PartialEq for HealthCheckStatus {
             (&HealthCheckStatus::Healthy, &HealthCheckStatus::Healthy) => true,
             (&HealthCheckStatus::Unhealthy, &HealthCheckStatus::Unhealthy) => true,
             _ => false
+        }
+    }
+}
+
+impl Into<status::Status> for HealthCheckStatus {
+    fn into(self) -> status::Status {
+        match self {
+            HealthCheckStatus::Healthy => status::Ok,
+            HealthCheckStatus::Unhealthy => status::InternalServerError,
         }
     }
 }
@@ -61,6 +75,15 @@ impl HealthCheckService {
 
     pub fn register_check<H: HealthCheck + 'static>(&mut self, check: H) {
         self.checks.push(Box::new(check));
+    }
+
+    pub fn check_service_health(&mut self, _: &mut Request) -> IronResult<Response> {
+        let (global, health) = self.execute();
+
+        let payload = json::encode(&health).unwrap();
+        let status: status::Status = global.into();
+
+        Ok(Response::with((status, payload)))
     }
 
     pub fn execute(&mut self) -> (HealthCheckStatus, HashMap<String,HealthCheckStatus>) {
