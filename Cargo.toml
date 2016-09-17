@@ -1,0 +1,8 @@
+[package]
+name = "micro-kit"
+version = "0.1.0"
+authors = ["David Allen <david.allen@ey.com>"]
+
+[dependencies]
+rustc-serialize = "0.3"
+log = "0.3"
