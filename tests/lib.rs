@@ -1,7 +1,6 @@
 extern crate micro_kit;
 
-use micro_kit::*;
-use std::error::Error;
+use micro_kit::healthcheck::*;
 
 #[test]
 fn test_status_and() {
