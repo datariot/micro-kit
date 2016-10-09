@@ -18,7 +18,7 @@ impl PartialEq for HealthCheckStatus {
         match (self, other) {
             (&HealthCheckStatus::Healthy, &HealthCheckStatus::Healthy) => true,
             (&HealthCheckStatus::Unhealthy, &HealthCheckStatus::Unhealthy) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -36,7 +36,7 @@ impl Encodable for HealthCheckStatus {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         match self {
             &HealthCheckStatus::Healthy => "Ok".encode(s),
-            &HealthCheckStatus::Unhealthy => "Failed".encode(s)
+            &HealthCheckStatus::Unhealthy => "Failed".encode(s),
         }
     }
 }
@@ -53,21 +53,18 @@ impl BitAnd for HealthCheckStatus {
 }
 
 pub trait HealthCheck: Send {
-
     fn name(&self) -> String;
 
     fn check_health(&mut self) -> HealthCheckStatus;
-
 }
 
 pub struct HealthCheckService {
-    checks: Vec<Box<HealthCheck + 'static>>
+    checks: Vec<Box<HealthCheck + 'static>>,
 }
 
 impl HealthCheckService {
-
     pub fn new() -> HealthCheckService {
-        HealthCheckService { checks: Vec::new()}
+        HealthCheckService { checks: Vec::new() }
     }
 
     pub fn register_check<H: HealthCheck + 'static>(&mut self, check: H) {
@@ -83,7 +80,7 @@ impl HealthCheckService {
         Ok(Response::with((status, payload)))
     }
 
-    pub fn execute(&mut self) -> (HealthCheckStatus, HashMap<String,HealthCheckStatus>) {
+    pub fn execute(&mut self) -> (HealthCheckStatus, HashMap<String, HealthCheckStatus>) {
         let mut map = HashMap::new();
 
         for check in &mut self.checks {
@@ -91,11 +88,9 @@ impl HealthCheckService {
             map.insert(check.name(), res);
         }
 
-        let global_health = map.values().fold(HealthCheckStatus::Healthy, | check, val | {
-            check & val.clone()
-        });
+        let global_health = map.values()
+            .fold(HealthCheckStatus::Healthy, |check, val| check & val.clone());
 
         (global_health, map)
     }
-
 }
