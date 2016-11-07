@@ -1,6 +1,11 @@
 extern crate micro_kit;
+extern crate metrics as metrics_lib;
+extern crate histogram;
 
 use micro_kit::healthcheck::*;
+use micro_kit::metrics::*;
+use histogram::Histogram;
+use metrics_lib::metrics::{Counter, Gauge, Meter, Metric, StdCounter, StdGauge, StdMeter};
 
 #[test]
 fn test_status_and() {
@@ -57,4 +62,32 @@ fn test_health_check() {
 
     assert_eq!(HealthCheckStatus::Unhealthy, status);
 
+}
+
+#[test]
+fn meter() {
+    let m = StdMeter::new();
+    m.mark(100);
+
+    let c = StdCounter::new();
+    c.inc();
+
+    let g = StdGauge::new();
+    g.set(2);
+
+    let mut h = Histogram::configure()
+        .max_value(100)
+        .precision(1)
+        .build()
+        .unwrap();
+
+    h.increment_by(1, 1).unwrap();
+
+    let mut reporter = MetricsService::new("test");
+    let _ = reporter.add("meter", Metric::Meter(m.clone()));
+    let _ = reporter.add("counter", Metric::Counter(c.clone()));
+    let _ = reporter.add("gauge", Metric::Gauge(g.clone()));
+    let _ = reporter.add("histo", Metric::Histogram(h));
+    g.set(4);
+    println!("{:?}", reporter.report());
 }

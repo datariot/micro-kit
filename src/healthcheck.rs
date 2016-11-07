@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use iron::prelude::*;
 use iron::status;
 
-use rustc_serialize::{Encodable, Encoder};
-use rustc_serialize::json;
+use serde::{Serialize, Serializer};
+use serde_json;
 
 #[derive(Debug, Clone)]
 pub enum HealthCheckStatus {
@@ -32,11 +32,13 @@ impl Into<status::Status> for HealthCheckStatus {
     }
 }
 
-impl Encodable for HealthCheckStatus {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl Serialize for HealthCheckStatus {
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: Serializer
+    {
         match self {
-            &HealthCheckStatus::Healthy => "Ok".encode(s),
-            &HealthCheckStatus::Unhealthy => "Failed".encode(s),
+            &HealthCheckStatus::Healthy => serializer.serialize_str("Ok"),
+            &HealthCheckStatus::Unhealthy => serializer.serialize_str("Failed"),
         }
     }
 }
@@ -63,6 +65,7 @@ pub struct HealthCheckService {
 }
 
 impl HealthCheckService {
+
     pub fn new() -> HealthCheckService {
         HealthCheckService { checks: Vec::new() }
     }
@@ -74,7 +77,7 @@ impl HealthCheckService {
     pub fn check_service_health(&mut self, _: &mut Request) -> IronResult<Response> {
         let (global, health) = self.execute();
 
-        let payload = json::encode(&health).unwrap();
+        let payload = serde_json::to_string(&health).unwrap();
         let status: status::Status = global.into();
 
         Ok(Response::with((status, payload)))
