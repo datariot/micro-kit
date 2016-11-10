@@ -24,7 +24,7 @@ impl MetricsService {
         let n = name.into();
         match self.metrics.insert(n.clone(), metric) {
             Some(_) => Ok(()),
-            None => Err(format!("Unable to attach metric reporter {}", n)),
+            None => Err(format!("Unable to attach metric reporter {}, {:?}", n, self.metrics.len())),
         }
     }
 
@@ -36,27 +36,26 @@ impl MetricsService {
     }
 
     pub fn report(&self) -> IronResult<Response> {
-        let mut report: HashMap<&String,String> = HashMap::new();
+        let mut report: HashMap<&String,i64> = HashMap::new();
         for (name, metric) in &self.metrics {
             let snapshot = match metric {
                 &Metric::Meter(ref x) => {
-                    format!("{:?}", x.snapshot())
+                    x.snapshot().count as i64
                 }
-                &Metric::Gauge(ref x) => {
-                    format!("{:?}", x.snapshot())
+                &Metric::Gauge(ref x ) => {
+                    x.snapshot().value as i64
                 }
                 &Metric::Counter(ref x) => {
-                    format!("{:?}", x.snapshot())
+                    x.snapshot().value as i64
                 }
-                &Metric::Histogram(ref x) => {
-                    format!("histogram{:?}", x)
+                &Metric::Histogram(_) => {
+                   -1 as i64
                 }
             };
             report.insert(name, snapshot);
         }
         match serde_json::to_string(&report) {
             Ok(r) => {
-                println!("{:?}", r);
                 Ok(Response::with((status::Ok, r)))
             },
             Err(e) => Ok(Response::with((status::InternalServerError, format!("{:?}", e))))
