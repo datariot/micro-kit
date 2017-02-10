@@ -33,7 +33,7 @@ impl Into<status::Status> for HealthCheckStatus {
 }
 
 impl Serialize for HealthCheckStatus {
-    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
         where S: Serializer
     {
         match self {
