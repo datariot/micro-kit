@@ -1,7 +1,7 @@
 [package]
 name = "micro-kit"
-version = "1.0.0"
-authors = ["David Allen <david@datariot.io>"]
+version = "1.0.1"
+authors = ["David Allen <david@datariot.io>", "Alexander Brugh <alexander.brugh@ey.com>"]
 description = "A Microservice lib because I miss DropWizard."
 license = "MIT"
 
