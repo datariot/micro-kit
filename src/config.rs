@@ -58,7 +58,7 @@ pub struct APIConfig<'a> {
 
 impl<'a> APIConfig<'a> {
     pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["service"].is_null() {
+        if !c["service"].is_badvalue() {
             let service_ip = c["service"]["address"].as_str().unwrap_or("0.0.0.0");
             let service_port = c["service"]["port"].as_i64().unwrap_or(8081) as u16;
 
@@ -82,7 +82,7 @@ pub struct NetflowSocketConfig {
 
 impl NetflowSocketConfig {
     pub fn new(c: &Yaml) -> Result<Self, ConfigError> {
-        if !c["netflow"].is_null() {
+        if !c["netflow"].is_badvalue() {
             let netflow_ip = c["netflow"]["address"].as_str().unwrap_or("0.0.0.0");
             let netflow_port = c["netflow"]["port"].as_i64().unwrap_or(9995) as u16;
 
@@ -110,7 +110,7 @@ pub struct KafkaProducerConfig<'a> {
 impl<'a> KafkaProducerConfig<'a> {
 
     pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_null() && !c["kafka"]["producer"].is_null(){
+        if !c["kafka"].is_badvalue() && !c["kafka"]["producer"].is_badvalue(){
             let env = c["kafka"]["env"].as_str().unwrap();
             let client = c["kafka"]["client"].as_str().unwrap();
             let pro_topic = c["kafka"]["producer"]["topic"].as_str().unwrap();
@@ -160,7 +160,7 @@ pub struct KafkaConsumerConfig<'a> {
 impl<'a> KafkaConsumerConfig<'a> {
 
     pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_null() && !c["kafka"]["consumer"].is_null(){
+        if !c["kafka"].is_badvalue() && !c["kafka"]["consumer"].is_badvalue(){
             let topic = c["kafka"]["consumer"]["topic"].as_str().unwrap();
             let group = c["kafka"]["consumer"]["group"].as_str().unwrap();
             let max_fetch = c["kafka"]["consumer"]["max_fetch"].as_str().unwrap_or("1048576");
