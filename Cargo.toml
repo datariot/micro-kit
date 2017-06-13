@@ -7,7 +7,6 @@ license = "MIT"
 
 [dependencies]
 iron = "^0.4"
-router = "^0.3"
 metrics = "^0.2"
 rdkafka = "^0.7.0"
 

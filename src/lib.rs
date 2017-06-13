@@ -1,5 +1,4 @@
-pub extern crate iron;
-pub extern crate router;
+extern crate iron;
 extern crate serde;
 extern crate serde_json;
 extern crate log4rs;
@@ -16,5 +15,4 @@ pub mod http {
     pub use iron::{Iron, Protocol};
     pub use iron::prelude as prelude;
     pub use iron::status as status;
-    pub use router as router;
 }
