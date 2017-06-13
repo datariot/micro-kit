@@ -58,7 +58,7 @@ pub struct APIConfig<'a> {
 
 impl<'a> APIConfig<'a> {
     pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["service"].is_null() {
+        if !c["service"].is_badvalue() {
             let service_ip = c["service"]["address"].as_str().unwrap_or("0.0.0.0");
             let service_port = c["service"]["port"].as_i64().unwrap_or(8081) as u16;
 
@@ -82,7 +82,7 @@ pub struct NetflowSocketConfig {
 
 impl NetflowSocketConfig {
     pub fn new(c: &Yaml) -> Result<Self, ConfigError> {
-        if !c["netflow"].is_null() {
+        if !c["netflow"].is_badvalue() {
             let netflow_ip = c["netflow"]["address"].as_str().unwrap_or("0.0.0.0");
             let netflow_port = c["netflow"]["port"].as_i64().unwrap_or(9995) as u16;
 
@@ -110,10 +110,10 @@ pub struct KafkaProducerConfig<'a> {
 impl<'a> KafkaProducerConfig<'a> {
 
     pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_null() && !c["kafka"]["producer"].is_null(){
-            let env = c["kafka"]["env"].as_str().unwrap();
-            let client = c["kafka"]["client"].as_str().unwrap();
-            let pro_topic = c["kafka"]["producer"]["topic"].as_str().unwrap();
+        if !c["kafka"].is_badvalue() && !c["kafka"]["producer"].is_badvalue(){
+            let env = c["kafka"]["env"].as_str().expect("No kafka environment (env) found");
+            let client = c["kafka"]["client"].as_str().expect("No kafka client id (client) found");
+            let pro_topic = c["kafka"]["producer"]["topic"].as_str().expect("No kafka producer topic found");
             let brokers: Vec<String> = c["kafka"]["brokers"].as_vec().unwrap()
                 .iter().map(|v| v.as_str().unwrap().to_string()).collect();
 
@@ -150,6 +150,8 @@ impl<'a> KafkaProducerConfig<'a> {
 }
 
 pub struct KafkaConsumerConfig<'a> {
+    env: Cow<'a, str>,
+    client:  Cow<'a, str>,
     topic: Cow<'a, str>,
     group: Cow<'a, str>,
     topic_start: Cow<'a, str>,
@@ -160,15 +162,20 @@ pub struct KafkaConsumerConfig<'a> {
 impl<'a> KafkaConsumerConfig<'a> {
 
     pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_null() && !c["kafka"]["consumer"].is_null(){
-            let topic = c["kafka"]["consumer"]["topic"].as_str().unwrap();
-            let group = c["kafka"]["consumer"]["group"].as_str().unwrap();
+        if !c["kafka"].is_badvalue() {
+            let env = c["kafka"]["env"].as_str().expect("No kafka environment (env) found");
+            let client = c["kafka"]["client"].as_str().expect("No kafka client id (client) found");
+            let topic = c["kafka"]["consumer"]["topic"].as_str().expect("No kafka consumer topic found");
+            let group = c["kafka"]["consumer"]["group"].as_str().expect("No kafka consumer group found");
             let max_fetch = c["kafka"]["consumer"]["max_fetch"].as_str().unwrap_or("1048576");
             let topic_start = c["kafka"]["consumer"]["start"].as_str().unwrap_or("smallest");
-            let brokers: Vec<String> = c["kafka"]["brokers"].as_vec().unwrap()
+            let brokers: Vec<String> = c["kafka"]["brokers"].as_vec()
+                .expect("no kafka brokers (brokers) found")
                 .iter().map(|v| v.as_str().unwrap().to_string()).collect();
 
             Ok(KafkaConsumerConfig {
+                env: env.into(),
+                client: client.into(),
                 brokers: brokers,
                 topic: topic.into(),
                 group: group.into(),
@@ -196,4 +203,11 @@ impl<'a> KafkaConsumerConfig<'a> {
         self.topic.as_ref()
     }
 
+    pub fn get_client(&self) -> &str {
+        self.client.as_ref()
+    }
+
+    pub fn get_env(&self) -> &str {
+        self.env.as_ref()
+    }
 }
