@@ -1,18 +1,16 @@
 extern crate micro_kit;
 extern crate metrics as metrics_lib;
-extern crate histogram;
 
 use micro_kit::healthcheck::*;
 use micro_kit::metrics::*;
-use histogram::Histogram;
 use metrics_lib::metrics::{Counter, Gauge, Meter, Metric, StdCounter, StdGauge, StdMeter};
 
 #[test]
 fn test_status_and() {
 
     assert_eq!(HealthCheckStatus::Healthy, HealthCheckStatus::Healthy & HealthCheckStatus::Healthy);
-    assert_eq!(HealthCheckStatus::Unhealthy, HealthCheckStatus::Unhealthy & HealthCheckStatus::Healthy);  
-    assert_eq!(HealthCheckStatus::Unhealthy, HealthCheckStatus::Unhealthy & HealthCheckStatus::Unhealthy); 
+    assert_eq!(HealthCheckStatus::Unhealthy, HealthCheckStatus::Unhealthy & HealthCheckStatus::Healthy);
+    assert_eq!(HealthCheckStatus::Unhealthy, HealthCheckStatus::Unhealthy & HealthCheckStatus::Unhealthy);
     assert_eq!(HealthCheckStatus::Unhealthy, HealthCheckStatus::Healthy & HealthCheckStatus::Unhealthy);
 }
 
@@ -75,19 +73,10 @@ fn meter() {
     let g = StdGauge::new();
     g.set(2);
 
-    let mut h = Histogram::configure()
-        .max_value(100)
-        .precision(1)
-        .build()
-        .unwrap();
-
-    h.increment_by(1, 1).unwrap();
-
     let mut reporter = MetricsService::new("test");
     let _ = reporter.add("meter", Metric::Meter(m.clone()));
     let _ = reporter.add("counter", Metric::Counter(c.clone()));
     let _ = reporter.add("gauge", Metric::Gauge(g.clone()));
-    let _ = reporter.add("histo", Metric::Histogram(h));
     g.set(4);
     println!("{:?}", reporter.report());
 }
