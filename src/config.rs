@@ -8,11 +8,11 @@ use std::io::prelude::Read;
 use yaml_rust::YamlLoader;
 use yaml_rust::Yaml;
 
-use rdkafka::config::{ClientConfig, TopicConfig};
-use rdkafka::client::EmptyContext;
-use rdkafka::error::KafkaError;
-use rdkafka::producer::FutureProducer;
-use rdkafka::consumer::{BaseConsumer, EmptyConsumerContext};
+use ::kafka::config::{ClientConfig, TopicConfig};
+use ::kafka::client::EmptyContext;
+use ::kafka::error::KafkaError;
+use ::kafka::producer::FutureProducer;
+use ::kafka::consumer::{BaseConsumer, EmptyConsumerContext};
 
 #[derive(Debug)]
 pub enum ConfigError {

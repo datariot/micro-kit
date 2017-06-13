@@ -1,11 +1,11 @@
 use std::ops::BitAnd;
 use std::collections::HashMap;
 
-use iron::prelude::*;
-use iron::status;
+use ::http::prelude::*;
+use ::http::status;
 
-use serde::{Serialize, Serializer};
-use serde_json;
+use ::serde::{Serialize, Serializer};
+use ::json;
 
 #[derive(Debug, Clone)]
 pub enum HealthCheckStatus {
@@ -77,7 +77,7 @@ impl HealthCheckService {
     pub fn check_service_health(&mut self, _: &mut Request) -> IronResult<Response> {
         let (global, health) = self.execute();
 
-        let payload = serde_json::to_string(&health).unwrap();
+        let payload = json::to_string(&health).unwrap();
         let status: status::Status = global.into();
 
         Ok(Response::with((status, payload)))

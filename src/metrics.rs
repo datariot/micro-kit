@@ -2,7 +2,7 @@ pub use metrics_lib::metrics::{Metric, Counter, StdCounter};
 
 use std::collections::HashMap;
 
-use serde_json;
+use ::json;
 
 use ::http::prelude::{IronResult, Response};
 use ::http::status;
@@ -54,7 +54,7 @@ impl MetricsService {
             };
             report.insert(name, snapshot);
         }
-        match serde_json::to_string(&report) {
+        match json::to_string(&report) {
             Ok(r) => {
                 Ok(Response::with((status::Ok, r)))
             },

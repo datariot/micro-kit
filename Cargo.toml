@@ -11,10 +11,18 @@ metrics = "^0.2"
 rdkafka = "^0.7.0"
 
 serde = "^1.0.0"
+serde_bytes = "^0.10.0"
 serde_json = "^1.0.0"
+
+rmp = "^0.8"
+rmp-serde = "^0.13"
 
 yaml-rust = "0.3"
 log = "0.3"
+
+[dependencies.chrono]
+version = "^0.3"
+features = ["serde"]
 
 [dependencies.log4rs]
 version = "0.4"
