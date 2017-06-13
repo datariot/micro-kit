@@ -1,6 +1,8 @@
 use yaml_rust::{Yaml, YamlEmitter};
 use log4rs;
 
+pub use log4rs::init_config;
+
 #[derive(Debug)]
 pub struct LoggingConfig;
 
