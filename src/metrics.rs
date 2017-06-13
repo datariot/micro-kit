@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use serde_json;
 
-use iron::prelude::*;
-use iron::status;
+use ::http::prelude::{IronResult, Response};
+use ::http::status;
 
 pub struct MetricsService {
 
