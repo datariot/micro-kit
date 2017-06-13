@@ -1,4 +1,4 @@
-use metrics_lib::metrics::Metric;
+pub use metrics_lib::metrics::{Metric, Counter, StdCounter};
 
 use std::collections::HashMap;
 
@@ -60,7 +60,6 @@ impl MetricsService {
             },
             Err(e) => Ok(Response::with((status::InternalServerError, format!("{:?}", e))))
         }
-        
+
     }
 }
-
