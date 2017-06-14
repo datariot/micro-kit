@@ -5,14 +5,8 @@ use std::error::Error as StdError;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::prelude::Read;
-use yaml_rust::YamlLoader;
-use yaml_rust::Yaml;
-
-use ::kafka::config::{ClientConfig, TopicConfig};
-use ::kafka::client::EmptyContext;
-use ::kafka::error::KafkaError;
-use ::kafka::producer::FutureProducer;
-use ::kafka::consumer::{BaseConsumer, EmptyConsumerContext};
+use ::yaml::YamlLoader;
+use ::yaml::Yaml;
 
 #[derive(Debug)]
 pub enum ConfigError {
@@ -97,117 +91,5 @@ impl NetflowSocketConfig {
 
     pub fn get_socket(&self) -> &SocketAddr {
         &self.socket
-    }
-}
-
-pub struct KafkaProducerConfig<'a> {
-    env: Cow<'a, str>,
-    client:  Cow<'a, str>,
-    topic:  Cow<'a, str>,
-    brokers: Vec<String>,
-}
-
-impl<'a> KafkaProducerConfig<'a> {
-
-    pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_badvalue() && !c["kafka"]["producer"].is_badvalue(){
-            let env = c["kafka"]["env"].as_str().expect("No kafka environment (env) found");
-            let client = c["kafka"]["client"].as_str().expect("No kafka client id (client) found");
-            let pro_topic = c["kafka"]["producer"]["topic"].as_str().expect("No kafka producer topic found");
-            let brokers: Vec<String> = c["kafka"]["brokers"].as_vec().unwrap()
-                .iter().map(|v| v.as_str().unwrap().to_string()).collect();
-
-            Ok(KafkaProducerConfig {
-                brokers: brokers,
-                topic: pro_topic.into(),
-                client: client.into(),
-                env: env.into(),
-            })
-        } else {
-            Err(ConfigError::MissingComponent("kafka".to_string()))
-        }
-    }
-
-    pub fn create(&self) -> Result<FutureProducer<EmptyContext>, KafkaError> {
-        ClientConfig::new()
-            .set("bootstrap.servers", self.brokers.join(",").as_str())
-            .set("compression.codec", "snappy")
-            .create::<FutureProducer<EmptyContext>>()
-    }
-
-    pub fn get_topic(&self) -> &str {
-        self.topic.as_ref()
-    }
-
-    pub fn get_env(&self) -> &str {
-        self.env.as_ref()
-    }
-
-    pub fn get_client(&self) -> &str {
-        self.client.as_ref()
-    }
-
-}
-
-pub struct KafkaConsumerConfig<'a> {
-    env: Cow<'a, str>,
-    client:  Cow<'a, str>,
-    topic: Cow<'a, str>,
-    group: Cow<'a, str>,
-    topic_start: Cow<'a, str>,
-    max_fetch: Cow<'a, str>,
-    brokers: Vec<String>,
-}
-
-impl<'a> KafkaConsumerConfig<'a> {
-
-    pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_badvalue() {
-            let env = c["kafka"]["env"].as_str().expect("No kafka environment (env) found");
-            let client = c["kafka"]["client"].as_str().expect("No kafka client id (client) found");
-            let topic = c["kafka"]["consumer"]["topic"].as_str().expect("No kafka consumer topic found");
-            let group = c["kafka"]["consumer"]["group"].as_str().expect("No kafka consumer group found");
-            let max_fetch = c["kafka"]["consumer"]["max_fetch"].as_str().unwrap_or("1048576");
-            let topic_start = c["kafka"]["consumer"]["start"].as_str().unwrap_or("smallest");
-            let brokers: Vec<String> = c["kafka"]["brokers"].as_vec()
-                .expect("no kafka brokers (brokers) found")
-                .iter().map(|v| v.as_str().unwrap().to_string()).collect();
-
-            Ok(KafkaConsumerConfig {
-                env: env.into(),
-                client: client.into(),
-                brokers: brokers,
-                topic: topic.into(),
-                group: group.into(),
-                topic_start: topic_start.into(),
-                max_fetch: max_fetch.into(),
-            })
-        } else {
-            Err(ConfigError::MissingComponent("kafka".to_string()))
-        }
-    }
-
-    pub fn create(&self) -> Result<BaseConsumer<EmptyConsumerContext>, KafkaError> {
-        ClientConfig::new()
-            .set("group.id", self.group.as_ref())
-            .set("bootstrap.servers", self.brokers.join(",").as_str())
-            .set("max.partition.fetch.bytes", self.max_fetch.as_ref())
-            .set_default_topic_config(
-                 TopicConfig::new()
-                 .set("auto.offset.reset", self.topic_start.as_ref())
-                 .finalize())
-            .create::<BaseConsumer<_>>()
-    }
-
-    pub fn get_topic(&self) -> &str {
-        self.topic.as_ref()
-    }
-
-    pub fn get_client(&self) -> &str {
-        self.client.as_ref()
-    }
-
-    pub fn get_env(&self) -> &str {
-        self.env.as_ref()
     }
 }
