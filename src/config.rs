@@ -84,6 +84,7 @@ impl From<Box<StdError>> for ConfigError {
 }
 
 /// Wrapper for a parsed configuration. Should wrap the Yaml better to make the API easier to use.
+#[derive(Debug, Clone)]
 pub struct ConfigFile {
     yaml: Yaml,
 }
