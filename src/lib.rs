@@ -1,3 +1,13 @@
+//! #Micro-Kit
+//!
+//! The Micro-Kit module is meant to be a curated collection of crates (Re-Exported) and helper
+//! functionality to build RESTful micro-services with standardized logging, healthchecking,
+//! metrics, and configuration
+//!
+//! The motivation for the module is from Dropwizard, a collection of java libs that help quickly
+//! build standardized RESTful applications. This kit is nowhere close to as useful (yet) but we
+//! can aspire!
+
 extern crate log4rs;
 extern crate metrics as metrics_lib;
 
@@ -13,10 +23,17 @@ pub extern crate rmp_serde as msgpack_serde;
 
 pub extern crate chrono;
 
-pub mod healthcheck;
-pub mod logging;
-pub mod metrics;
+/// Configuration based on YAML files for apps.
 pub mod config;
+
+/// Healthchecks for apps.
+pub mod healthcheck;
+
+/// Logging configuration for apps.
+pub mod logging;
+
+/// A framework for adding metrics to an app.
+pub mod metrics;
 
 use std::ops::Deref;
 use chrono::offset::TimeZone;
@@ -24,13 +41,15 @@ use chrono::offset::utc::UTC;
 use chrono::datetime::DateTime;
 use serde::{Deserialize, Serialize, Deserializer, Serializer};
 
-// A TimeStamp new type around the i64 so we can implement
-// Serialization to and from Epoch timestamps in a type safe manner.
-
+/// A TimeStamp newtype around the i64 so we can implement
+/// serialization to and from Epoch timestamps in a type safe manner.
 #[derive(Debug, PartialOrd, PartialEq, Clone, Copy, Hash)]
 pub struct TimeStamp(i64);
 
 impl TimeStamp {
+
+    /// Create a new TimeStamp. Here we use an i64 because several modern time packages have moved
+    /// to an i64 representation of epoch.
     pub fn new(ts: i64) -> TimeStamp {
         TimeStamp(ts)
     }
