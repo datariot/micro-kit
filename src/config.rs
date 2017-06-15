@@ -7,6 +7,7 @@ use std::io::prelude::Read;
 use ::yaml::YamlLoader;
 use ::yaml::Yaml;
 use ::yaml::scanner::ScanError;
+use ::yaml::emitter::EmitError;
 
 /// When loading a YAML file there maybe missing required components or bad YAML. This error type
 /// allows these errors to be propegated.
@@ -17,7 +18,11 @@ pub enum ConfigError {
     /// When a yaml file is missing a required component. Will return the missing component.
     MissingComponent(String),
     /// When a YAML file encounters a parsing error.
-    BadYaml(ScanError),
+    YamlSyntax(ScanError),
+    /// When there is a problem emitting yaml.
+    YamlEmit(EmitError),
+    /// Handle a Box<Error>
+    Error(Box<StdError>),
 }
 
 impl fmt::Display for ConfigError {
@@ -25,7 +30,9 @@ impl fmt::Display for ConfigError {
         match *self {
             ConfigError::IoError(ref err) => write!(f, "ConfigError: {}", err),
             ConfigError::MissingComponent(ref comp) => write!(f, "ConfigError: Missing {}", comp),
-            ConfigError::BadYaml(ref err) => write!(f, "ConfigError: {}", err),
+            ConfigError::YamlSyntax(ref err) => write!(f, "ConfigError: {}", err),
+            ConfigError::YamlEmit(ref err) => write!(f, "ConfigError: {:?}", err),
+            ConfigError::Error(ref err) => write!(f, "ConfigError: {:?}", err),
         }
     }
 }
@@ -35,7 +42,9 @@ impl StdError for ConfigError {
         match *self {
             ConfigError::IoError(ref err) => err.description(),
             ConfigError::MissingComponent(_) => "Missing Required Component",
-            ConfigError::BadYaml(ref err) => err.description(),
+            ConfigError::YamlSyntax(ref err) => err.description(),
+            ConfigError::YamlEmit(_) => "Problem emitting Yaml",
+            ConfigError::Error(ref err) => err.description(),
         }
     }
 
@@ -43,7 +52,9 @@ impl StdError for ConfigError {
         match *self {
             ConfigError::IoError(ref err) => Some(err),
             ConfigError::MissingComponent(_) => None,
-            ConfigError::BadYaml(ref err) => Some(err)
+            ConfigError::YamlSyntax(ref err) => Some(err),
+            ConfigError::YamlEmit(_) => None,
+            ConfigError::Error(_) => None,
         }
     }
 }
@@ -56,7 +67,19 @@ impl From<io::Error> for ConfigError {
 
 impl From<ScanError> for ConfigError {
     fn from(err: ScanError) -> ConfigError {
-        ConfigError::BadYaml(err)
+        ConfigError::YamlSyntax(err)
+    }
+}
+
+impl From<EmitError> for ConfigError {
+    fn from(err: EmitError) -> ConfigError {
+        ConfigError::YamlEmit(err)
+    }
+}
+
+impl From<Box<StdError>> for ConfigError {
+    fn from(err: Box<StdError>) -> ConfigError {
+        ConfigError::Error(err)
     }
 }
 
