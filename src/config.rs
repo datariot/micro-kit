@@ -95,9 +95,10 @@ impl ConfigFile {
         let mut config_file = File::open(name.as_ref())?;
         let mut config_str = String::new();
         config_file.read_to_string(&mut config_str).expect("Error reading config file");
-        let yaml = YamlLoader::load_from_str(&config_str)?;
+        let yamls = YamlLoader::load_from_str(&config_str)?;
+        let yaml: Yaml = yamls[0].clone();
         Ok(ConfigFile {
-            yaml: yaml[0].clone()
+            yaml: yaml
         })
     }
 
