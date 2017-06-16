@@ -1,11 +1,11 @@
-use metrics_lib::metrics::Metric;
+pub use metrics_lib::metrics::{Metric, Counter, StdCounter};
 
 use std::collections::HashMap;
 
-use serde_json;
+use ::json;
 
-use iron::prelude::*;
-use iron::status;
+use ::http::prelude::{IronResult, Response};
+use ::http::status;
 
 pub struct MetricsService {
 
@@ -54,13 +54,12 @@ impl MetricsService {
             };
             report.insert(name, snapshot);
         }
-        match serde_json::to_string(&report) {
+        match json::to_string(&report) {
             Ok(r) => {
                 Ok(Response::with((status::Ok, r)))
             },
             Err(e) => Ok(Response::with((status::InternalServerError, format!("{:?}", e))))
         }
-        
+
     }
 }
-

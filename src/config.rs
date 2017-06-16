@@ -1,28 +1,38 @@
-use std::net::{SocketAddr, SocketAddrV4, Ipv4Addr};
-use std::str::FromStr;
 use std::fmt;
 use std::error::Error as StdError;
 use std::borrow::Cow;
 use std::fs::File;
+use std::io;
 use std::io::prelude::Read;
-use yaml_rust::YamlLoader;
-use yaml_rust::Yaml;
+use ::yaml::YamlLoader;
+use ::yaml::Yaml;
+use ::yaml::scanner::ScanError;
+use ::yaml::emitter::EmitError;
 
-use rdkafka::config::{ClientConfig, TopicConfig};
-use rdkafka::client::EmptyContext;
-use rdkafka::error::KafkaError;
-use rdkafka::producer::FutureProducer;
-use rdkafka::consumer::{BaseConsumer, EmptyConsumerContext};
-
+/// When loading a YAML file there maybe missing required components or bad YAML. This error type
+/// allows these errors to be propegated.
 #[derive(Debug)]
 pub enum ConfigError {
-    MissingComponent(String)
+    /// A problem finding or reading the config file.
+    IoError(io::Error),
+    /// When a yaml file is missing a required component. Will return the missing component.
+    MissingComponent(String),
+    /// When a YAML file encounters a parsing error.
+    YamlSyntax(ScanError),
+    /// When there is a problem emitting yaml.
+    YamlEmit(EmitError),
+    /// Handle a Box<Error>
+    Error(Box<StdError>),
 }
 
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ConfigError::MissingComponent(_) => f.write_str("MissingConfig")
+            ConfigError::IoError(ref err) => write!(f, "ConfigError: {}", err),
+            ConfigError::MissingComponent(ref comp) => write!(f, "ConfigError: Missing {}", comp),
+            ConfigError::YamlSyntax(ref err) => write!(f, "ConfigError: {}", err),
+            ConfigError::YamlEmit(ref err) => write!(f, "ConfigError: {:?}", err),
+            ConfigError::Error(ref err) => write!(f, "ConfigError: {:?}", err),
         }
     }
 }
@@ -30,23 +40,70 @@ impl fmt::Display for ConfigError {
 impl StdError for ConfigError {
     fn description(&self) -> &str {
         match *self {
-            ConfigError::MissingComponent(_) => "Missing Required Component"
+            ConfigError::IoError(ref err) => err.description(),
+            ConfigError::MissingComponent(_) => "Missing Required Component",
+            ConfigError::YamlSyntax(ref err) => err.description(),
+            ConfigError::YamlEmit(_) => "Problem emitting Yaml",
+            ConfigError::Error(ref err) => err.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        match *self {
+            ConfigError::IoError(ref err) => Some(err),
+            ConfigError::MissingComponent(_) => None,
+            ConfigError::YamlSyntax(ref err) => Some(err),
+            ConfigError::YamlEmit(_) => None,
+            ConfigError::Error(_) => None,
         }
     }
 }
 
-pub struct ConfigFile;
+impl From<io::Error> for ConfigError {
+    fn from(err: io::Error) -> ConfigError {
+        ConfigError::IoError(err)
+    }
+}
+
+impl From<ScanError> for ConfigError {
+    fn from(err: ScanError) -> ConfigError {
+        ConfigError::YamlSyntax(err)
+    }
+}
+
+impl From<EmitError> for ConfigError {
+    fn from(err: EmitError) -> ConfigError {
+        ConfigError::YamlEmit(err)
+    }
+}
+
+impl From<Box<StdError>> for ConfigError {
+    fn from(err: Box<StdError>) -> ConfigError {
+        ConfigError::Error(err)
+    }
+}
+
+/// Wrapper for a parsed configuration. Should wrap the Yaml better to make the API easier to use.
+#[derive(Debug, Clone)]
+pub struct ConfigFile {
+    yaml: Yaml,
+}
 
 impl ConfigFile {
 
-    pub fn open(name: &str) -> Yaml {
-        let mut config_file = File::open(name).expect("Error reading config file");
+    pub fn open<'a>(name: Cow<'a, str>) -> Result<Self, ConfigError> {
+        let mut config_file = File::open(name.as_ref())?;
         let mut config_str = String::new();
         config_file.read_to_string(&mut config_str).expect("Error reading config file");
-        match YamlLoader::load_from_str(&config_str) {
-            Err(e) => panic!("Error parsing YAML: {:?}", e),
-            Ok(c) => c[0].clone(),
-        }
+        let yamls = YamlLoader::load_from_str(&config_str)?;
+        let yaml: Yaml = yamls[0].clone();
+        Ok(ConfigFile {
+            yaml: yaml
+        })
+    }
+
+    pub fn get_config(&self) -> &Yaml {
+        &self.yaml
     }
 
 }
@@ -57,157 +114,26 @@ pub struct APIConfig<'a> {
 }
 
 impl<'a> APIConfig<'a> {
-    pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["service"].is_badvalue() {
-            let service_ip = c["service"]["address"].as_str().unwrap_or("0.0.0.0");
-            let service_port = c["service"]["port"].as_i64().unwrap_or(8081) as u16;
+    pub fn new(c: &'a ConfigFile) -> Result<Self, ConfigError> {
+        if !c.get_config()["service"].is_badvalue() {
+            if !c.get_config()["service"]["address"].is_badvalue() {
+                let service_ip = c.get_config()["service"]["address"].as_str().unwrap();
+                let service_port = c.get_config()["service"]["port"].as_i64().unwrap_or(8081) as u16;
 
-            Ok(APIConfig {
-                addr: service_ip.into(),
-                port: service_port
-            })
+                Ok(APIConfig {
+                    addr: service_ip.into(),
+                    port: service_port
+                })
+            } else {
+                Err(ConfigError::MissingComponent("service -> address".to_string()))
+            }
+
         } else {
-            Err(ConfigError::MissingComponent("netflow".to_string()))
+            Err(ConfigError::MissingComponent("service".to_string()))
         }
     }
 
     pub fn get_conn(&self) -> String {
         format!("{}:{}", self.addr, self.port)
-    }
-}
-
-pub struct NetflowSocketConfig {
-    socket: SocketAddr
-}
-
-impl NetflowSocketConfig {
-    pub fn new(c: &Yaml) -> Result<Self, ConfigError> {
-        if !c["netflow"].is_badvalue() {
-            let netflow_ip = c["netflow"]["address"].as_str().unwrap_or("0.0.0.0");
-            let netflow_port = c["netflow"]["port"].as_i64().unwrap_or(9995) as u16;
-
-            let ip = Ipv4Addr::from_str(netflow_ip).unwrap();
-            Ok(NetflowSocketConfig {
-                socket: SocketAddr::V4(SocketAddrV4::new(ip, netflow_port))
-            })
-        } else {
-            Err(ConfigError::MissingComponent("netflow".to_string()))
-        }
-    }
-
-    pub fn get_socket(&self) -> &SocketAddr {
-        &self.socket
-    }
-}
-
-pub struct KafkaProducerConfig<'a> {
-    env: Cow<'a, str>,
-    client:  Cow<'a, str>,
-    topic:  Cow<'a, str>,
-    brokers: Vec<String>,
-}
-
-impl<'a> KafkaProducerConfig<'a> {
-
-    pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_badvalue() && !c["kafka"]["producer"].is_badvalue(){
-            let env = c["kafka"]["env"].as_str().expect("No kafka environment (env) found");
-            let client = c["kafka"]["client"].as_str().expect("No kafka client id (client) found");
-            let pro_topic = c["kafka"]["producer"]["topic"].as_str().expect("No kafka producer topic found");
-            let brokers: Vec<String> = c["kafka"]["brokers"].as_vec().unwrap()
-                .iter().map(|v| v.as_str().unwrap().to_string()).collect();
-
-            Ok(KafkaProducerConfig {
-                brokers: brokers,
-                topic: pro_topic.into(),
-                client: client.into(),
-                env: env.into(),
-            })
-        } else {
-            Err(ConfigError::MissingComponent("kafka".to_string()))
-        }
-    }
-
-    pub fn create(&self) -> Result<FutureProducer<EmptyContext>, KafkaError> {
-        ClientConfig::new()
-            .set("bootstrap.servers", self.brokers.join(",").as_str())
-            .set("compression.codec", "snappy")
-            .create::<FutureProducer<EmptyContext>>()
-    }
-
-    pub fn get_topic(&self) -> &str {
-        self.topic.as_ref()
-    }
-
-    pub fn get_env(&self) -> &str {
-        self.env.as_ref()
-    }
-
-    pub fn get_client(&self) -> &str {
-        self.client.as_ref()
-    }
-
-}
-
-pub struct KafkaConsumerConfig<'a> {
-    env: Cow<'a, str>,
-    client:  Cow<'a, str>,
-    topic: Cow<'a, str>,
-    group: Cow<'a, str>,
-    topic_start: Cow<'a, str>,
-    max_fetch: Cow<'a, str>,
-    brokers: Vec<String>,
-}
-
-impl<'a> KafkaConsumerConfig<'a> {
-
-    pub fn new(c: &'a Yaml) -> Result<Self, ConfigError> {
-        if !c["kafka"].is_badvalue() {
-            let env = c["kafka"]["env"].as_str().expect("No kafka environment (env) found");
-            let client = c["kafka"]["client"].as_str().expect("No kafka client id (client) found");
-            let topic = c["kafka"]["consumer"]["topic"].as_str().expect("No kafka consumer topic found");
-            let group = c["kafka"]["consumer"]["group"].as_str().expect("No kafka consumer group found");
-            let max_fetch = c["kafka"]["consumer"]["max_fetch"].as_str().unwrap_or("1048576");
-            let topic_start = c["kafka"]["consumer"]["start"].as_str().unwrap_or("smallest");
-            let brokers: Vec<String> = c["kafka"]["brokers"].as_vec()
-                .expect("no kafka brokers (brokers) found")
-                .iter().map(|v| v.as_str().unwrap().to_string()).collect();
-
-            Ok(KafkaConsumerConfig {
-                env: env.into(),
-                client: client.into(),
-                brokers: brokers,
-                topic: topic.into(),
-                group: group.into(),
-                topic_start: topic_start.into(),
-                max_fetch: max_fetch.into(),
-            })
-        } else {
-            Err(ConfigError::MissingComponent("kafka".to_string()))
-        }
-    }
-
-    pub fn create(&self) -> Result<BaseConsumer<EmptyConsumerContext>, KafkaError> {
-        ClientConfig::new()
-            .set("group.id", self.group.as_ref())
-            .set("bootstrap.servers", self.brokers.join(",").as_str())
-            .set("max.partition.fetch.bytes", self.max_fetch.as_ref())
-            .set_default_topic_config(
-                 TopicConfig::new()
-                 .set("auto.offset.reset", self.topic_start.as_ref())
-                 .finalize())
-            .create::<BaseConsumer<_>>()
-    }
-
-    pub fn get_topic(&self) -> &str {
-        self.topic.as_ref()
-    }
-
-    pub fn get_client(&self) -> &str {
-        self.client.as_ref()
-    }
-
-    pub fn get_env(&self) -> &str {
-        self.env.as_ref()
     }
 }
