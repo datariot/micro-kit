@@ -12,7 +12,7 @@ extern crate log4rs;
 extern crate metrics as metrics_lib;
 
 pub extern crate yaml_rust as yaml;
-pub extern crate iron as http;
+pub extern crate iron;
 
 pub extern crate serde;
 pub extern crate serde_bytes as bytes;
@@ -29,6 +29,9 @@ pub mod config;
 /// Healthchecks for apps.
 pub mod healthcheck;
 
+/// RESTful API helpers.
+pub mod http;
+
 /// Logging configuration for apps.
 pub mod logging;
 
@@ -36,9 +39,7 @@ pub mod logging;
 pub mod metrics;
 
 use std::ops::Deref;
-use chrono::offset::TimeZone;
-use chrono::offset::utc::UTC;
-use chrono::datetime::DateTime;
+use chrono::prelude::{TimeZone, Utc, DateTime};
 use serde::{Deserialize, Serialize, Deserializer, Serializer};
 
 /// A TimeStamp newtype around the i64 so we can implement
@@ -72,15 +73,15 @@ impl Serialize for TimeStamp {
     }
 }
 
-impl From<DateTime<UTC>> for TimeStamp {
-    fn from(dt: DateTime<UTC>) -> Self {
+impl From<DateTime<Utc>> for TimeStamp {
+    fn from(dt: DateTime<Utc>) -> Self {
         TimeStamp(dt.timestamp())
     }
 }
 
-impl Into<DateTime<UTC>> for TimeStamp {
-    fn into(self) -> DateTime<UTC> {
-        UTC.timestamp(*self, 0)
+impl Into<DateTime<Utc>> for TimeStamp {
+    fn into(self) -> DateTime<Utc> {
+        Utc.timestamp(*self, 0)
     }
 }
 
