@@ -4,6 +4,8 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io;
 use std::io::prelude::Read;
+use std::ops::Index;
+
 use ::yaml::YamlLoader;
 use ::yaml::Yaml;
 use ::yaml::scanner::ScanError;
@@ -106,4 +108,32 @@ impl ConfigFile {
         &self.yaml
     }
 
+}
+
+static BAD_VALUE: Yaml = Yaml::BadValue;
+impl<'a> Index<&'a str> for ConfigFile {
+    type Output = Yaml;
+
+    fn index(&self, idx: &'a str) -> &Yaml {
+        let key = Yaml::String(idx.to_owned());
+        match self.yaml.as_hash() {
+            Some(h) => h.get(&key).unwrap_or(&BAD_VALUE),
+            None => &BAD_VALUE
+        }
+    }
+}
+
+impl Index<usize> for ConfigFile {
+    type Output = Yaml;
+
+    fn index(&self, idx: usize) -> &Yaml {
+        if let Some(v) = self.yaml.as_vec() {
+            v.get(idx).unwrap_or(&BAD_VALUE)
+        } else if let Some(v) = self.yaml.as_hash() {
+            let key = Yaml::Integer(idx as i64);
+            v.get(&key).unwrap_or(&BAD_VALUE)
+        } else {
+            &BAD_VALUE
+        }
+    }
 }

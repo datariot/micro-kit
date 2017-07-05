@@ -13,6 +13,7 @@ extern crate metrics as metrics_lib;
 
 pub extern crate yaml_rust as yaml;
 pub extern crate iron;
+pub extern crate router;
 
 pub extern crate serde;
 pub extern crate serde_bytes as bytes;
