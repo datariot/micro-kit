@@ -1,22 +1,22 @@
 use std::sync::{PoisonError, MutexGuard};
-use std::collections::HashMap;
 use std::fmt;
 use std::error::Error;
 use std::borrow::Cow;
+use std::any::Any;
 
 use ::json;
 use ::config::{ConfigFile, ConfigError};
 
 #[derive(Debug)]
 pub enum APIError<'a> {
-    PoisonError(PoisonError<MutexGuard<'a, HashMap<String, u64>>>),
+    PoisonError(PoisonError<MutexGuard<'a, Any>>),
     JsonError(json::Error)
 }
 
 impl<'a> fmt::Display for APIError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            APIError::PoisonError(_) => f.write_str("Router Summary Lock Error"),
+            APIError::PoisonError(_) => f.write_str("Lock Error"),
             APIError::JsonError(_) => f.write_str("Json encoding Error")
         }
     }
@@ -25,7 +25,7 @@ impl<'a> fmt::Display for APIError<'a> {
 impl<'a> Error for APIError<'a> {
     fn description(&self) -> &str {
         match *self {
-            APIError::PoisonError(_) => "Router Summary Lock Error",
+            APIError::PoisonError(_) => "Lock Error",
             APIError::JsonError(_) => "JsonError"
         }
     }
@@ -45,10 +45,10 @@ pub struct APIConfig<'a> {
 
 impl<'a> APIConfig<'a> {
     pub fn new(c: &'a ConfigFile) -> Result<Self, ConfigError> {
-        if !c.get_config()["service"].is_badvalue() {
-            if !c.get_config()["service"]["address"].is_badvalue() {
-                let service_ip = c.get_config()["service"]["address"].as_str().unwrap();
-                let service_port = c.get_config()["service"]["port"].as_i64().unwrap_or(8081) as u16;
+        if !c["service"].is_badvalue() {
+            if !c["service"]["address"].is_badvalue() {
+                let service_ip = c["service"]["address"].as_str().unwrap();
+                let service_port = c["service"]["port"].as_i64().unwrap_or(8081) as u16;
 
                 Ok(APIConfig {
                     addr: service_ip.into(),

@@ -38,17 +38,17 @@ impl MetricsService {
     pub fn report(&self) -> IronResult<Response> {
         let mut report: HashMap<&String,i64> = HashMap::new();
         for (name, metric) in &self.metrics {
-            let snapshot = match metric {
-                &Metric::Meter(ref x) => {
+            let snapshot = match *metric {
+                Metric::Meter(ref x) => {
                     x.snapshot().count as i64
                 }
-                &Metric::Gauge(ref x ) => {
+                Metric::Gauge(ref x ) => {
                     x.snapshot().value as i64
                 }
-                &Metric::Counter(ref x) => {
+                Metric::Counter(ref x) => {
                     x.snapshot().value as i64
                 }
-                &Metric::Histogram(_) => {
+                Metric::Histogram(_) => {
                    -1 as i64
                 }
             };

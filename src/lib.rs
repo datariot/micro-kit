@@ -1,11 +1,11 @@
 //! #Micro-Kit
 //!
 //! The Micro-Kit module is meant to be a curated collection of crates (Re-Exported) and helper
-//! functionality to build RESTful micro-services with standardized logging, healthchecking,
+//! functionality to build `RESTful` micro-services with standardized logging, healthchecking,
 //! metrics, and configuration
 //!
 //! The motivation for the module is from Dropwizard, a collection of java libs that help quickly
-//! build standardized RESTful applications. This kit is nowhere close to as useful (yet) but we
+//! build standardized `RESTful` applications. This kit is nowhere close to as useful (yet) but we
 //! can aspire!
 
 extern crate log4rs;
@@ -30,7 +30,7 @@ pub mod config;
 /// Healthchecks for apps.
 pub mod healthcheck;
 
-/// RESTful API helpers.
+/// `RESTful` API helpers.
 pub mod http;
 
 /// Logging configuration for apps.
@@ -43,14 +43,14 @@ use std::ops::Deref;
 use chrono::prelude::{TimeZone, Utc, DateTime};
 use serde::{Deserialize, Serialize, Deserializer, Serializer};
 
-/// A TimeStamp newtype around the i64 so we can implement
+/// A `TimeStamp` newtype around the i64 so we can implement
 /// serialization to and from Epoch timestamps in a type safe manner.
 #[derive(Debug, PartialOrd, PartialEq, Clone, Copy, Hash)]
 pub struct TimeStamp(i64);
 
 impl TimeStamp {
 
-    /// Create a new TimeStamp. Here we use an i64 because several modern time packages have moved
+    /// Create a new `TimeStamp`. Here we use an i64 because several modern time packages have moved
     /// to an i64 representation of epoch.
     pub fn new(ts: i64) -> TimeStamp {
         TimeStamp(ts)
@@ -90,6 +90,6 @@ impl<'de> Deserialize<'de> for TimeStamp {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
         where D: Deserializer<'de>
     {
-        i64::deserialize(deserializer).map(|b| TimeStamp::new(b))
+        i64::deserialize(deserializer).map(TimeStamp::new)
     }
 }

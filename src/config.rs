@@ -92,7 +92,7 @@ pub struct ConfigFile {
 }
 
 impl ConfigFile {
-
+    /// Open a yaml file as a config file.
     pub fn open<'a>(name: Cow<'a, str>) -> Result<Self, ConfigError> {
         let mut config_file = File::open(name.as_ref())?;
         let mut config_str = String::new();
@@ -103,14 +103,11 @@ impl ConfigFile {
             yaml: yaml
         })
     }
-
-    pub fn get_config(&self) -> &Yaml {
-        &self.yaml
-    }
-
 }
 
 static BAD_VALUE: Yaml = Yaml::BadValue;
+
+/// Allow a `ConfigFile` to be accessed like a map
 impl<'a> Index<&'a str> for ConfigFile {
     type Output = Yaml;
 
@@ -123,6 +120,7 @@ impl<'a> Index<&'a str> for ConfigFile {
     }
 }
 
+/// Allow a `ConfigFile` to be accessed like an array.
 impl Index<usize> for ConfigFile {
     type Output = Yaml;
 
