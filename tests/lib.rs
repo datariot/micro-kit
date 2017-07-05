@@ -43,7 +43,7 @@ fn test_health_check() {
     let good = GoodHealthCheck{};
     let bad = BadHealthCheck{};
 
-    let mut service = HealthCheckService::new();
+    let mut service: HealthCheckService = Default::default();
     service.register_check(good);
 
     let (status, checks) = service.execute();

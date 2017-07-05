@@ -1,8 +1,8 @@
 use std::ops::BitAnd;
 use std::collections::HashMap;
 
-use ::http::prelude::*;
-use ::http::status;
+use ::iron::prelude::*;
+use ::iron::status;
 
 use ::serde::{Serialize, Serializer};
 use ::json;
@@ -36,9 +36,9 @@ impl Serialize for HealthCheckStatus {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
         where S: Serializer
     {
-        match self {
-            &HealthCheckStatus::Healthy => serializer.serialize_str("Ok"),
-            &HealthCheckStatus::Unhealthy => serializer.serialize_str("Failed"),
+        match *self {
+            HealthCheckStatus::Healthy => serializer.serialize_str("Ok"),
+            HealthCheckStatus::Unhealthy => serializer.serialize_str("Failed"),
         }
     }
 }
@@ -60,15 +60,12 @@ pub trait HealthCheck: Send {
     fn check_health(&mut self) -> HealthCheckStatus;
 }
 
+#[derive(Default)]
 pub struct HealthCheckService {
     checks: Vec<Box<HealthCheck + 'static>>,
 }
 
 impl HealthCheckService {
-
-    pub fn new() -> HealthCheckService {
-        HealthCheckService { checks: Vec::new() }
-    }
 
     pub fn register_check<H: HealthCheck + 'static>(&mut self, check: H) {
         self.checks.push(Box::new(check));

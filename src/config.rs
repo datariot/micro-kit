@@ -4,6 +4,8 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io;
 use std::io::prelude::Read;
+use std::ops::Index;
+
 use ::yaml::YamlLoader;
 use ::yaml::Yaml;
 use ::yaml::scanner::ScanError;
@@ -90,7 +92,7 @@ pub struct ConfigFile {
 }
 
 impl ConfigFile {
-
+    /// Open a yaml file as a config file.
     pub fn open<'a>(name: Cow<'a, str>) -> Result<Self, ConfigError> {
         let mut config_file = File::open(name.as_ref())?;
         let mut config_str = String::new();
@@ -101,39 +103,35 @@ impl ConfigFile {
             yaml: yaml
         })
     }
-
-    pub fn get_config(&self) -> &Yaml {
-        &self.yaml
-    }
-
 }
 
-pub struct APIConfig<'a> {
-    addr: Cow<'a, str>,
-    port: u16
-}
+static BAD_VALUE: Yaml = Yaml::BadValue;
 
-impl<'a> APIConfig<'a> {
-    pub fn new(c: &'a ConfigFile) -> Result<Self, ConfigError> {
-        if !c.get_config()["service"].is_badvalue() {
-            if !c.get_config()["service"]["address"].is_badvalue() {
-                let service_ip = c.get_config()["service"]["address"].as_str().unwrap();
-                let service_port = c.get_config()["service"]["port"].as_i64().unwrap_or(8081) as u16;
+/// Allow a `ConfigFile` to be accessed like a map
+impl<'a> Index<&'a str> for ConfigFile {
+    type Output = Yaml;
 
-                Ok(APIConfig {
-                    addr: service_ip.into(),
-                    port: service_port
-                })
-            } else {
-                Err(ConfigError::MissingComponent("service -> address".to_string()))
-            }
-
-        } else {
-            Err(ConfigError::MissingComponent("service".to_string()))
+    fn index(&self, idx: &'a str) -> &Yaml {
+        let key = Yaml::String(idx.to_owned());
+        match self.yaml.as_hash() {
+            Some(h) => h.get(&key).unwrap_or(&BAD_VALUE),
+            None => &BAD_VALUE
         }
     }
+}
 
-    pub fn get_conn(&self) -> String {
-        format!("{}:{}", self.addr, self.port)
+/// Allow a `ConfigFile` to be accessed like an array.
+impl Index<usize> for ConfigFile {
+    type Output = Yaml;
+
+    fn index(&self, idx: usize) -> &Yaml {
+        if let Some(v) = self.yaml.as_vec() {
+            v.get(idx).unwrap_or(&BAD_VALUE)
+        } else if let Some(v) = self.yaml.as_hash() {
+            let key = Yaml::Integer(idx as i64);
+            v.get(&key).unwrap_or(&BAD_VALUE)
+        } else {
+            &BAD_VALUE
+        }
     }
 }
