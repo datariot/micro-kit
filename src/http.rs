@@ -1,19 +1,20 @@
-use std::sync::{PoisonError, MutexGuard};
+use std::sync::{PoisonError};
 use std::fmt;
 use std::error::Error;
 use std::borrow::Cow;
-use std::any::Any;
+use std::fmt::Debug;
+
 
 use ::json;
 use ::config::{ConfigFile, ConfigError};
 
 #[derive(Debug)]
-pub enum APIError<'a> {
-    PoisonError(PoisonError<MutexGuard<'a, Any>>),
+pub enum APIError<T: Debug> {
+    PoisonError(PoisonError<T>),
     JsonError(json::Error)
 }
 
-impl<'a> fmt::Display for APIError<'a> {
+impl<T: Debug> fmt::Display for APIError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             APIError::PoisonError(_) => f.write_str("Lock Error"),
@@ -22,7 +23,7 @@ impl<'a> fmt::Display for APIError<'a> {
     }
 }
 
-impl<'a> Error for APIError<'a> {
+impl<T: Debug> Error for APIError<T> {
     fn description(&self) -> &str {
         match *self {
             APIError::PoisonError(_) => "Lock Error",
