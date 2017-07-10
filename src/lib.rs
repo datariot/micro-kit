@@ -19,9 +19,6 @@ pub extern crate serde;
 pub extern crate serde_bytes as bytes;
 pub extern crate serde_json as json;
 
-pub extern crate rmp as msgpack;
-pub extern crate rmp_serde as msgpack_serde;
-
 pub extern crate chrono;
 
 /// Configuration based on YAML files for apps.
